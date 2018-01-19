@@ -80,5 +80,5 @@ def bad_request(start_response):
 
     return [bytes(body.encode('utf-8'))]
 
-httpd = make_server('localhost', 5000, application)
-httpd.serve_forever()
+# httpd = make_server('localhost', 5000, application)
+# httpd.serve_forever()
