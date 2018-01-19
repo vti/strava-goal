@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 import json
 import http.client
@@ -80,5 +80,9 @@ def bad_request(start_response):
 
     return [bytes(body.encode('utf-8'))]
 
-# httpd = make_server('localhost', 5000, application)
-# httpd.serve_forever()
+if __name__ == "__main__":
+    hostname = 'localhost'
+    port = 5000
+    print('Listening on ' + hostname + ':' + str(port))
+    httpd = make_server(hostname, port, application)
+    httpd.serve_forever()
