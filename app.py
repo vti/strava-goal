@@ -4,37 +4,26 @@ import json
 import re
 import http.client
 from wsgiref.simple_server import make_server
-from cgi import parse_qs
+from webob import Request, Response
 
 def application(env, start_response):
-    path_info = env.get('PATH_INFO')
-    request_method = env.get('REQUEST_METHOD')
+    req = Request(env)
 
-    if request_method == 'GET':
-        if path_info == '/':
-            start_response('302 OK', [('Location', '/index.html')])
-            return [b""]
-
-        if path_info == '/index.html':
+    if req.method == 'GET':
+        if req.path_info == '/':
+            res = Response(status=302, headers=[('Location', '/index.html')])
+            return res(env, start_response)
+        elif req.path_info == '/index.html':
             content = slurp('public/index.html', 'r')
-            start_response('200 OK', [('Content-Type', 'text/html; chartset=utf-8'), ('Content-Length', str(len(content)))])
-            return [bytes(content.encode('utf-8'))]
-
-        if path_info == '/strava-64.png':
+            res = Response(headers=[('Content-Type', 'text/html; chartset=utf-8')], body=content)
+            return res(env, start_response)
+        elif req.path_info == '/strava-64.png':
             content = slurp('public/strava-64.png', 'rb')
-            start_response('200 OK', [('Content-Type', 'image/png'), ('Content-Length', str(len(content)))])
-            return [bytes(content)]
-    elif request_method == 'POST':
-        if path_info == '/':
-            try:
-                request_body_size = int(env.get('CONTENT_LENGTH', 0))
-            except ValueError:
-                request_body_size = 0
-
-            request_body = env['wsgi.input'].read(request_body_size)
-            post_data = parse_qs(request_body)
-
-            athlete_id = post_data.get(bytes('athlete_id'.encode('utf-8')), 0)[0].decode('utf-8')
+            res = Response(headers=[('Content-Type', 'image/png')], body=content)
+            return res(env, start_response)
+    elif req.method == 'POST':
+        if req.path_info == '/':
+            athlete_id = req.POST['athlete_id']
             if athlete_id == "":
                 return bad_request(start_response)
 
@@ -54,13 +43,11 @@ def application(env, start_response):
 
             body = json.dumps({'distance': distance, 'name': name})
 
-            start_response('200 OK', [('Content-Type', 'application/json'), ('Content-Length', str(len(body)))])
+            res = Response(headers=[('Content-Type', 'application/json')], body=body)
+            return res(env, start_response)
 
-            return [bytes(body.encode('utf-8'))]
-
-    start_response('404 Not Found', [('Content-Type', 'text/html'), ('Content-Length', str(9))])
-
-    return [b"Not Found"]
+    res = Response(status=404, headers=[('Content-Type', 'text/html')], body="Not Found")
+    return res(env, start_response)
 
 def slurp(path, mode):
     with open(path, mode=mode) as handle:
