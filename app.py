@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 
 import json
-import http.client
 import re
+import http.client
 from wsgiref.simple_server import make_server
-from cgi import parse_qs, escape
+from cgi import parse_qs
 
 def application(env, start_response):
     path_info = env.get('PATH_INFO')
@@ -12,7 +12,7 @@ def application(env, start_response):
 
     if request_method == 'GET':
         if path_info == '/':
-            start_response('302 OK', [('Location','/index.html')])
+            start_response('302 OK', [('Location', '/index.html')])
             return [b""]
 
         if path_info == '/index.html':
@@ -28,7 +28,7 @@ def application(env, start_response):
         if path_info == '/':
             try:
                 request_body_size = int(env.get('CONTENT_LENGTH', 0))
-            except (ValueError):
+            except ValueError:
                 request_body_size = 0
 
             request_body = env['wsgi.input'].read(request_body_size)
@@ -40,49 +40,50 @@ def application(env, start_response):
 
             html = fetch_profile(athlete_id)
 
-            m = re.search("<td>(\d+(?:\.\d+)?)<abbr class='unit' title='kilometers'>", html)
+            m = re.search(r"<td>(\d+(?:\.\d+)?)<abbr class='unit' title='kilometers'>", html)
             if not m:
                 return bad_request(start_response)
 
-            distance = m.group(1);
+            distance = m.group(1)
 
-            m = re.search("<title>(.*?)<\/title>", html)
+            m = re.search(r"<title>(.*?)<\/title>", html)
             if not m:
                 return bad_request(start_response)
 
-            name = m.group(1);
+            name = m.group(1)
 
             body = json.dumps({'distance': distance, 'name': name})
 
-            start_response('200 OK', [('Content-Type','application/json'), ('Content-Length', str(len(body)))])
+            start_response('200 OK', [('Content-Type', 'application/json'), ('Content-Length', str(len(body)))])
 
             return [bytes(body.encode('utf-8'))]
 
-    start_response('404 Not Found', [('Content-Type','text/html'), ('Content-Length', str(9))])
+    start_response('404 Not Found', [('Content-Type', 'text/html'), ('Content-Length', str(9))])
 
     return [b"Not Found"]
 
 def slurp(path, mode):
-    with open(path, mode=mode) as x: content = x.read()
+    with open(path, mode=mode) as handle:
+        content = handle.read()
     return content
 
 def fetch_profile(athlete_id):
-    c = http.client.HTTPSConnection("www.strava.com")
-    c.request("GET", "/athletes/" + athlete_id)
-    response = c.getresponse()
+    conn = http.client.HTTPSConnection("www.strava.com")
+    conn.request("GET", "/athletes/" + athlete_id)
+    response = conn.getresponse()
     data = response.read()
     return data.decode('utf-8')
 
 def bad_request(start_response):
     body = 'Bad Request'
 
-    start_response('400 Bad Request', [('Content-Type','text/plain'), ('Content-Length', str(len(body)))])
+    start_response('400 Bad Request', [('Content-Type', 'text/plain'), ('Content-Length', str(len(body)))])
 
     return [bytes(body.encode('utf-8'))]
 
 if __name__ == "__main__":
     hostname = 'localhost'
     port = 5000
-    print('Listening on ' + hostname + ':' + str(port))
+    print('Listening on {}:{}'.format(hostname, str(port)))
     httpd = make_server(hostname, port, application)
     httpd.serve_forever()
